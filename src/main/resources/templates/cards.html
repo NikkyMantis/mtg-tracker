@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>MTG Card Search</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            background-color: #f4f4f4;
+            padding: 20px;
+        }
+        form {
+            margin-bottom: 20px;
+        }
+        .card {
+            display: flex;
+            align-items: center;
+            background: white;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .card img {
+            width: 150px;
+            height: auto;
+            margin-right: 20px;
+        }
+        .card-info {
+            line-height: 1.4;
+        }
+        .add-button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .remove-button {
+            background-color: #f44336;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .success-message {
+            color: green;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Magic: The Gathering Card Search</h1>
+
+    <div th:if="${param.success}" class="success-message">
+        Card successfully added to your collection!
+    </div>
+
+    <form action="/cards/search/view" method="get">
+        <input type="text" name="name" placeholder="Search for a card..." th:value="${name}" />
+
+        <select name="color">
+            <option value="" th:selected="${color == null or color == ''}">All Colors</option>
+            <option value="White" th:selected="${color == 'White'}">White</option>
+            <option value="Blue" th:selected="${color == 'Blue'}">Blue</option>
+            <option value="Black" th:selected="${color == 'Black'}">Black</option>
+            <option value="Red" th:selected="${color == 'Red'}">Red</option>
+            <option value="Green" th:selected="${color == 'Green'}">Green</option>
+        </select>
+
+        <select name="type">
+            <option value="" th:selected="${type == null or type == ''}">All Types</option>
+            <option value="Creature" th:selected="${type == 'Creature'}">Creature</option>
+            <option value="Enchantment" th:selected="${type == 'Enchantment'}">Enchantment</option>
+            <option value="Instant" th:selected="${type == 'Instant'}">Instant</option>
+            <option value="Sorcery" th:selected="${type == 'Sorcery'}">Sorcery</option>
+            <option value="Artifact" th:selected="${type == 'Artifact'}">Artifact</option>
+            <option value="Planeswalker" th:selected="${type == 'Planeswalker'}">Planeswalker</option>
+            <option value="Land" th:selected="${type == 'Land'}">Land</option>
+        </select>
+
+        <select name="rarity">
+            <option value="" th:selected="${rarity == null or rarity == ''}">All Rarities</option>
+            <option value="Common" th:selected="${rarity == 'Common'}">Common</option>
+            <option value="Uncommon" th:selected="${rarity == 'Uncommon'}">Uncommon</option>
+            <option value="Rare" th:selected="${rarity == 'Rare'}">Rare</option>
+            <option value="Mythic" th:selected="${rarity == 'Mythic'}">Mythic</option>
+        </select>
+
+        <button type="submit">Search</button>
+    </form>
+
+    <form action="/cards/collection" method="get" style="margin-top: 10px;">
+        <button type="submit">View My Collection</button>
+    </form>
+
+    <div th:if="${cards}">
+        <th:block th:each="card : ${cards}" th:if="${card.name}">
+            <div class="card">
+                <img th:if="${card.imageUrl}" th:src="${card.imageUrl}" alt="Card image" />
+                <div class="card-info">
+                    <h3 th:text="${card.name}"></h3>
+                    <p><strong>Type:</strong> <span th:text="${card.type}">Type</span></p>
+                    <p><strong>Mana Cost:</strong> <span th:text="${card.manaCost}">Cost</span></p>
+                    <p><strong>Rarity:</strong> <span th:text="${card.rarity}">Rarity</span></p>
+
+                    <div th:if="${isCollection != true}">
+                        <form th:action="@{/cards/add}" method="post" th:object="${card}">
+                            <input type="hidden" th:field="*{name}" />
+                            <input type="hidden" th:field="*{type}" />
+                            <input type="hidden" th:field="*{manaCost}" />
+                            <input type="hidden" th:field="*{rarity}" />
+                            <input type="hidden" th:field="*{imageUrl}" />
+
+                            <input type="hidden" name="searchName" th:value="${name}" />
+                            <input type="hidden" name="color" th:value="${color}" />
+                            <input type="hidden" name="type" th:value="${type}" />
+                            <input type="hidden" name="rarity" th:value="${rarity}" />
+
+                            <button type="submit" class="add-button">Add to Collection</button>
+                        </form>
+                    </div>
+
+                    <div th:if="${isCollection != null and isCollection}">
+                        <form th:action="@{/cards/remove}" method="post" th:object="${card}">
+                            <input type="hidden" th:field="*{name}" />                        
+                            <button type="submit" class="remove-button">Remove</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </th:block>
+    </div>
+</body>
+</html>
