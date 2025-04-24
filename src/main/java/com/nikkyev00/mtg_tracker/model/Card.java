@@ -4,6 +4,7 @@ import lombok.Data;
 
 @Data
 public class Card {
+    private Integer multiverseId;
     private String name;
     private String type;
     private String rarity;

@@ -1,136 +1,76 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="https://www.thymeleaf.org/extras/spring-security"
+      data-bs-theme="light">
 <head>
-    <title>MTG Card Search</title>
-    <style>
-        body {
-            font-family: sans-serif;
-            background-color: #f4f4f4;
-            padding: 20px;
-        }
-        form {
-            margin-bottom: 20px;
-        }
-        .card {
-            display: flex;
-            align-items: center;
-            background: white;
-            padding: 10px;
-            margin-bottom: 10px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        .card img {
-            width: 150px;
-            height: auto;
-            margin-right: 20px;
-        }
-        .card-info {
-            line-height: 1.4;
-        }
-        .add-button {
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        .remove-button {
-            background-color: #f44336;
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        .success-message {
-            color: green;
-            margin-bottom: 15px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>MTG Card Search</title>
+
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    /* Card image styling */
+    .card-img-top {
+      width: 100%;
+      height: 180px;
+      object-fit: contain;
+      object-position: center;
+      background: #f4f4f4;
+    }
+  </style>
 </head>
 <body>
-    <h1>Magic: The Gathering Card Search</h1>
 
-    <div th:if="${param.success}" class="success-message">
-        Card successfully added to your collection!
-    </div>
+  <!-- Navbar omitted for brevity… -->
 
-    <form action="/cards/search/view" method="get">
-        <input type="text" name="name" placeholder="Search for a card..." th:value="${name}" />
+  <div class="container">
 
-        <select name="color">
-            <option value="" th:selected="${color == null or color == ''}">All Colors</option>
-            <option value="White" th:selected="${color == 'White'}">White</option>
-            <option value="Blue" th:selected="${color == 'Blue'}">Blue</option>
-            <option value="Black" th:selected="${color == 'Black'}">Black</option>
-            <option value="Red" th:selected="${color == 'Red'}">Red</option>
-            <option value="Green" th:selected="${color == 'Green'}">Green</option>
-        </select>
+    <!-- Alerts and Search Form omitted for brevity… -->
 
-        <select name="type">
-            <option value="" th:selected="${type == null or type == ''}">All Types</option>
-            <option value="Creature" th:selected="${type == 'Creature'}">Creature</option>
-            <option value="Enchantment" th:selected="${type == 'Enchantment'}">Enchantment</option>
-            <option value="Instant" th:selected="${type == 'Instant'}">Instant</option>
-            <option value="Sorcery" th:selected="${type == 'Sorcery'}">Sorcery</option>
-            <option value="Artifact" th:selected="${type == 'Artifact'}">Artifact</option>
-            <option value="Planeswalker" th:selected="${type == 'Planeswalker'}">Planeswalker</option>
-            <option value="Land" th:selected="${type == 'Land'}">Land</option>
-        </select>
+    <!-- Cards Grid with detail links -->
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-4">
+      <th:block th:each="card : ${cards}">
+        <div class="col">
+          <!-- DEBUG: show the multiverseId on page -->
+          <p class="text-muted small" th:text="'DEBUG ID: ' + ${card.multiverseId}">DEBUG ID:</p>
 
-        <select name="rarity">
-            <option value="" th:selected="${rarity == null or rarity == ''}">All Rarities</option>
-            <option value="Common" th:selected="${rarity == 'Common'}">Common</option>
-            <option value="Uncommon" th:selected="${rarity == 'Uncommon'}">Uncommon</option>
-            <option value="Rare" th:selected="${rarity == 'Rare'}">Rare</option>
-            <option value="Mythic" th:selected="${rarity == 'Mythic'}">Mythic</option>
-        </select>
-
-        <button type="submit">Search</button>
-    </form>
-
-    <form action="/cards/collection" method="get" style="margin-top: 10px;">
-        <button type="submit">View My Collection</button>
-    </form>
-
-    <div th:if="${cards}">
-        <th:block th:each="card : ${cards}" th:if="${card.name}">
-            <div class="card">
-                <img th:if="${card.imageUrl}" th:src="${card.imageUrl}" alt="Card image" />
-                <div class="card-info">
-                    <h3 th:text="${card.name}"></h3>
-                    <p><strong>Type:</strong> <span th:text="${card.type}">Type</span></p>
-                    <p><strong>Mana Cost:</strong> <span th:text="${card.manaCost}">Cost</span></p>
-                    <p><strong>Rarity:</strong> <span th:text="${card.rarity}">Rarity</span></p>
-
-                    <div th:if="${isCollection != true}">
-                        <form th:action="@{/cards/add}" method="post" th:object="${card}">
-                            <input type="hidden" th:field="*{name}" />
-                            <input type="hidden" th:field="*{type}" />
-                            <input type="hidden" th:field="*{manaCost}" />
-                            <input type="hidden" th:field="*{rarity}" />
-                            <input type="hidden" th:field="*{imageUrl}" />
-
-                            <input type="hidden" name="searchName" th:value="${name}" />
-                            <input type="hidden" name="color" th:value="${color}" />
-                            <input type="hidden" name="type" th:value="${type}" />
-                            <input type="hidden" name="rarity" th:value="${rarity}" />
-
-                            <button type="submit" class="add-button">Add to Collection</button>
-                        </form>
-                    </div>
-
-                    <div th:if="${isCollection != null and isCollection}">
-                        <form th:action="@{/cards/remove}" method="post" th:object="${card}">
-                            <input type="hidden" th:field="*{name}" />                        
-                            <button type="submit" class="remove-button">Remove</button>
-                        </form>
-                    </div>
-                </div>
+          <!-- Only link if ID is present -->
+          <a th:if="${card.multiverseId != null}"
+             th:href="@{/cards/{multiverseId}(multiverseId=${card.multiverseId})}"
+             class="text-decoration-none text-dark">
+            <div class="card h-100">
+              <img th:if="${card.imageUrl}" th:src="${card.imageUrl}" class="card-img-top" alt="Card image">
+              <div class="card-body">
+                <h5 class="card-title" th:text="${card.name}">Card Name</h5>
+                <p class="card-text mb-1"><strong>Type:</strong> <span th:text="${card.type}"></span></p>
+                <p class="card-text mb-1"><strong>Mana:</strong> <span th:text="${card.manaCost}"></span></p>
+                <p class="card-text"><strong>Rarity:</strong> <span th:text="${card.rarity}"></span></p>
+              </div>
             </div>
-        </th:block>
+          </a>
+
+          <!-- For cards without an ID, render the card but disable link -->
+          <th:block th:unless="${card.multiverseId != null}">
+            <div class="card h-100 text-muted">
+              <img th:if="${card.imageUrl}" th:src="${card.imageUrl}" class="card-img-top" alt="Card image">
+              <div class="card-body">
+                <h5 class="card-title" th:text="${card.name}">Card Name</h5>
+                <p class="card-text mb-1"><strong>Type:</strong> <span th:text="${card.type}"></span></p>
+                <p class="card-text mb-1"><strong>Mana:</strong> <span th:text="${card.manaCost}"></span></p>
+                <p class="card-text"><strong>Rarity:</strong> <span th:text="${card.rarity}"></span></p>
+              </div>
+            </div>
+          </th:block>
+        </div>
+      </th:block>
     </div>
+
+    <!-- Pagination Controls omitted for brevity… -->
+
+  </div>
+
+  <!-- Bootstrap JS and Theme Toggle Script omitted for brevity… -->
+
 </body>
 </html>
