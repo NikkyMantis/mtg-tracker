@@ -1,21 +1,30 @@
 package com.nikkyev00.mtg_tracker.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
+
 import java.util.List;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 @Data
-public class CardDataWrapper {/**
-     * The list of cards returned by the MTG API.
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class CardDataWrapper {
+
+    /**
+     * The list of cards returned by Scryfall in a search.
      */
-    @JsonProperty("cards")
+    @JsonProperty("data")
     private List<Card> cards;
 
-    public List<Card> getCards() {
-        return cards;
-    }
+    /**
+     * True if there are additional pages of results.
+     */
+    @JsonProperty("has_more")
+    private boolean hasMore;
 
-    public void setCards(List<Card> cards) {
-        this.cards = cards;
-    }
+    /**
+     * URL for the next page of results (only valid if hasMore is true).
+     */
+    @JsonProperty("next_page")
+    private String nextPage;
 }

@@ -4,73 +4,135 @@
       data-bs-theme="light">
 <head>
   <meta charset="UTF-8">
-  <title>MTG Card Search</title>
-
-  <!-- Bootstrap 5 CSS -->
+  <title th:text="${isCollection} ? 'My Collection' : 'Search Cards'">Cards</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-
-  <style>
-    /* Card image styling */
-    .card-img-top {
-      width: 100%;
-      height: 180px;
-      object-fit: contain;
-      object-position: center;
-      background: #f4f4f4;
-    }
-  </style>
 </head>
-<body>
+<body class="bg-light">
 
-  <!-- Navbar omitted for brevity… -->
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+    <div class="container">
+      <a class="navbar-brand" th:href="@{/}">MTG Tracker</a>
+      <div class="collapse navbar-collapse">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item" sec:authorize="isAnonymous()">
+            <a class="nav-link" th:href="@{/login}">Sign In</a>
+          </li>
+          <li class="nav-item dropdown" sec:authorize="isAuthenticated()">
+            <a class="nav-link dropdown-toggle" href="#" id="userMenu" role="button"
+               data-bs-toggle="dropdown" aria-expanded="false"
+               th:text="${username}">Username</a>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
+              <li><a class="dropdown-item" th:href="@{/account}">Account</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li>
+                <form th:action="@{/logout}" method="post">
+                  <button type="submit" class="btn btn-link nav-link p-0">Sign Out</button>
+                </form>
+              </li>
+            </ul>
+          </li>
+          <li class="nav-item"><a class="nav-link" th:href="@{/cards}">Search Cards</a></li>
+          <li class="nav-item" sec:authorize="isAuthenticated()">
+            <a class="nav-link" th:href="@{/cards/collection}">My Collection</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
 
   <div class="container">
 
-    <!-- Alerts and Search Form omitted for brevity… -->
-
-    <!-- Cards Grid with detail links -->
-    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-4">
-      <th:block th:each="card : ${cards}">
-        <div class="col">
-          <!-- DEBUG: show the multiverseId on page -->
-          <p class="text-muted small" th:text="'DEBUG ID: ' + ${card.multiverseId}">DEBUG ID:</p>
-
-          <!-- Only link if ID is present -->
-          <a th:if="${card.multiverseId != null}"
-             th:href="@{/cards/{multiverseId}(multiverseId=${card.multiverseId})}"
-             class="text-decoration-none text-dark">
-            <div class="card h-100">
-              <img th:if="${card.imageUrl}" th:src="${card.imageUrl}" class="card-img-top" alt="Card image">
-              <div class="card-body">
-                <h5 class="card-title" th:text="${card.name}">Card Name</h5>
-                <p class="card-text mb-1"><strong>Type:</strong> <span th:text="${card.type}"></span></p>
-                <p class="card-text mb-1"><strong>Mana:</strong> <span th:text="${card.manaCost}"></span></p>
-                <p class="card-text"><strong>Rarity:</strong> <span th:text="${card.rarity}"></span></p>
-              </div>
-            </div>
-          </a>
-
-          <!-- For cards without an ID, render the card but disable link -->
-          <th:block th:unless="${card.multiverseId != null}">
-            <div class="card h-100 text-muted">
-              <img th:if="${card.imageUrl}" th:src="${card.imageUrl}" class="card-img-top" alt="Card image">
-              <div class="card-body">
-                <h5 class="card-title" th:text="${card.name}">Card Name</h5>
-                <p class="card-text mb-1"><strong>Type:</strong> <span th:text="${card.type}"></span></p>
-                <p class="card-text mb-1"><strong>Mana:</strong> <span th:text="${card.manaCost}"></span></p>
-                <p class="card-text"><strong>Rarity:</strong> <span th:text="${card.rarity}"></span></p>
-              </div>
-            </div>
-          </th:block>
-        </div>
-      </th:block>
+    <!-- Confirmation popup -->
+    <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+      Added "<span th:text="${addedCard}">Card</span>" to your collection!
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
 
-    <!-- Pagination Controls omitted for brevity… -->
+    <!-- Title -->
+    <h1 th:text="${isCollection} ? 'My Collection' : 'Search Cards'" class="mb-4"></h1>
+
+    <!-- Search form -->
+    <div th:if="${!isCollection}">
+      <form class="row g-3 mb-4" th:action="@{/cards}" method="get">
+        <div class="col-md-3">
+          <input type="text" name="name" class="form-control" placeholder="Name" th:value="${name}" />
+        </div>
+        <div class="col-md-2">
+          <input type="text" name="color" class="form-control" placeholder="Color" th:value="${color}" />
+        </div>
+        <div class="col-md-2">
+          <input type="text" name="type" class="form-control" placeholder="Type" th:value="${type}" />
+        </div>
+        <div class="col-md-2">
+          <select name="rarity" class="form-select">
+            <option value="">All Rarities</option>
+            <option value="common" th:selected="${rarity=='common'}">Common</option>
+            <option value="uncommon" th:selected="${rarity=='uncommon'}">Uncommon</option>
+            <option value="rare" th:selected="${rarity=='rare'}">Rare</option>
+            <option value="mythic" th:selected="${rarity=='mythic'}">Mythic</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <select name="matchType" class="form-select" th:value="${matchType}">
+            <option value="">Multi-Field Search</option>
+            <option value="exact" th:selected="${matchType=='exact'}">Exact Name Only</option>
+            <option value="fuzzy" th:selected="${matchType=='fuzzy'}">Fuzzy Name Match</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <select name="format" class="form-select" th:value="${format}">
+            <option value="">JSON</option>
+            <option value="csv" th:selected="${format=='csv'}">CSV</option>
+            <option value="text" th:selected="${format=='text'}">Text</option>
+            <option value="image" th:selected="${format=='image'}">Image Redirect</option>
+            <option value="file" th:selected="${format=='file'}">File Redirect</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <button type="submit" class="btn btn-primary w-100">Search</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Info prompt -->
+    <div th:if="${showSearchOnly}" class="alert alert-info">
+      Use the form above to search for cards.
+    </div>
+
+    <!-- API error -->
+    <div th:if="${apiError}" class="alert alert-danger" th:text="${apiError}"></div>
+
+    <!-- Results grid -->
+    <div th:if="${!cards.empty}">
+      <div class="row row-cols-1 row-cols-sm-2 row-cols-md-5 g-4">
+        <div class="col" th:each="card : ${cards}">
+          <div class="card h-100">
+            <img th:if="${card.imageUrl != null}" th:src="${card.imageUrl}" class="card-img-top" alt="Card image" />
+            <div class="card-body">
+              <h5 class="card-title text-center" th:text="${card.name}"></h5>
+              <form th:if="${!isCollection}" th:action="@{/cards/add}" method="post">
+                <input type="hidden" name="cardId" th:value="${card.id}" />
+                <input type="hidden" name="cardName" th:value="${card.name}" />
+                <button type="submit" class="btn btn-sm btn-success">Add</button>
+              </form>
+              <form th:if="${isCollection}" th:action="@{/cards/remove}" method="post">
+                <input type="hidden" name="cardId" th:value="${card.id}" />
+                <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- No results -->
+    <div th:if="${!showSearchOnly} and ${cards.empty}" class="alert alert-warning">
+      No cards found matching your criteria.
+    </div>
 
   </div>
 
-  <!-- Bootstrap JS and Theme Toggle Script omitted for brevity… -->
-
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

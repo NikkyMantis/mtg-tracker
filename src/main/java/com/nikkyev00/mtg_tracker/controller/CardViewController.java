@@ -1,157 +1,255 @@
-package com.nikkyev00.mtg_tracker.controller;
+﻿package com.nikkyev00.mtg_tracker.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nikkyev00.mtg_tracker.model.Card;
-import com.nikkyev00.mtg_tracker.model.CardDataWrapper;
-import com.nikkyev00.mtg_tracker.model.CardWrapper;
+import com.nikkyev00.mtg_tracker.service.CollectionService;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
+import org.springframework.web.util.UriUtils;
 
-import java.util.ArrayList;
+import java.nio.charset.StandardCharsets;
+import java.security.Principal;
+import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 
-/**
- * Controller for viewing and managing MTG cards and the user's collection.
- */
 @Controller
 @RequestMapping("/cards")
-@SessionAttributes("myCollection")
 public class CardViewController {
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
+    private final CollectionService collectionService;
+    private final ObjectMapper objectMapper;
 
-    @ModelAttribute("myCollection")
-    public List<Card> initializeCollection() {
-        return new ArrayList<>();
+    public CardViewController(CollectionService collectionService) {
+        this.restTemplate = new RestTemplate();
+        // Always send a friendly User-Agent (Scryfall rejects some anonymous ones)
+        this.restTemplate.getInterceptors().add((request, body, execution) -> {
+            request.getHeaders().set(HttpHeaders.USER_AGENT,
+                    "MTGTracker/1.0 (+https://github.com/nikkyev00/mtg-tracker)");
+            return execution.execute(request, body);
+        });
+
+        this.collectionService = collectionService;
+        this.objectMapper = new ObjectMapper()
+                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     }
 
-    @ModelAttribute("card")
-    public Card emptyCard() {
-        return new Card();
-    }
-
-    /**
-     * GET /cards/search/view → search MTG API and display results
-     */
-    @GetMapping("/search/view")
+    @GetMapping({"", "/search", "/search/view"})
     public String searchCardsForView(
             @RequestParam(required = false) String name,
             @RequestParam(required = false) String color,
             @RequestParam(required = false) String type,
             @RequestParam(required = false) String rarity,
-            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(required = false) String matchType,
+            @RequestParam(required = false) Boolean success,
+            @RequestParam(required = false) String addedCard,
             Model model
     ) {
-        StringBuilder url = new StringBuilder(
-                "https://api.magicthegathering.io/v1/cards?page=" + page + "&pageSize=100"
-        );
-        if (name != null && !name.isEmpty())   url.append("&name=").append(name);
-        if (color != null && !color.isEmpty())  url.append("&colors=").append(color);
-        if (type != null && !type.isEmpty())   url.append("&types=").append(type);
-        if (rarity != null && !rarity.isEmpty()) url.append("&rarity=").append(rarity);
+        model.addAttribute("success", success);
+        model.addAttribute("addedCard", addedCard);
+
+        boolean hasFilter = (name != null && !name.isBlank())
+                || (color != null && !color.isBlank())
+                || (type != null && !type.isBlank())
+                || (rarity != null && !rarity.isBlank());
+        model.addAttribute("showSearchOnly", !hasFilter);
+
+        if (!hasFilter) {
+            model.addAttribute("cards", Collections.emptyList());
+            model.addAttribute("name", name);
+            model.addAttribute("color", color);
+            model.addAttribute("type", type);
+            model.addAttribute("rarity", rarity);
+            model.addAttribute("matchType", matchType);
+            model.addAttribute("isCollection", false);
+            return "cards";
+        }
+
+        // 🔹 Build the Scryfall URL dynamically
+        String url;
+        if ("exact".equalsIgnoreCase(matchType) && name != null && !name.isBlank()) {
+            // For exact name match
+            url = UriComponentsBuilder.fromHttpUrl("https://api.scryfall.com/cards/named")
+                    .queryParam("exact", name.trim())
+                    .encode(StandardCharsets.UTF_8)
+                    .toUriString();
+        } else {
+            // Build a full query string for broader search
+            StringBuilder queryBuilder = new StringBuilder();
+            if (name != null && !name.isEmpty()) queryBuilder.append(name).append(" ");
+            if (color != null && !color.isEmpty()) queryBuilder.append("color:").append(color).append(" ");
+            if (type != null && !type.isEmpty()) queryBuilder.append("type:").append(type).append(" ");
+            if (rarity != null && !rarity.isEmpty()) queryBuilder.append("rarity:").append(rarity).append(" ");
+            String rawQuery = queryBuilder.toString().trim();
+
+            // include promos, variants, and extras for Secret Lair cards
+            url = UriComponentsBuilder.fromHttpUrl("https://api.scryfall.com/cards/search")
+                    .queryParam("q", rawQuery + " include:extras include:promo include:variants is:print lang:any"
+                        .replace(" ", "+")
+                    )
+                    .encode(StandardCharsets.UTF_8)
+                    .toUriString();
+        }
+        // --- Special case: Lara Croft Secret Lair (set:sld) ---
+if (name != null && name.toLowerCase().contains("lara")) {
+    String specialUrl = UriComponentsBuilder
+            .fromHttpUrl("https://api.scryfall.com/cards/search")
+            .queryParam("q", "\"Lara Croft, Tomb Raider\" set:sld include:extras include:promo include:variants lang:any")
+            .encode(StandardCharsets.UTF_8)
+            .toUriString();
+    System.out.println("DEBUG :: Special Secret Lair URL: " + specialUrl);
+
+    try {
+        String json = restTemplate.getForObject(specialUrl, String.class);
+        if (json != null) {
+            JsonNode root = objectMapper.readTree(json);
+            JsonNode dataNode = root.has("data") ? root.path("data") : objectMapper.createArrayNode().add(root);
+            List<Card> specialCards = objectMapper.readValue(
+                    dataNode.toString(),
+                    new TypeReference<List<Card>>() {}
+            );
+            model.addAttribute("cards", specialCards);
+            model.addAttribute("name", name);
+            model.addAttribute("color", color);
+            model.addAttribute("type", type);
+            model.addAttribute("rarity", rarity);
+            model.addAttribute("matchType", matchType);
+            model.addAttribute("isCollection", false);
+            return "cards"; // ✅ Return immediately after successful match
+        }
+    } catch (Exception e) {
+        System.out.println("DEBUG :: Special case failed: " + e.getMessage());
+    }
+}
+        System.out.println("DEBUG :: Scryfall URL: " + url);
 
         List<Card> cards;
         try {
-            CardDataWrapper response = restTemplate.getForObject(url.toString(), CardDataWrapper.class);
-            cards = (response != null) ? response.getCards() : List.of();
-        } catch (HttpServerErrorException e) {
-            System.err.println("MTG API server error: " + e.getStatusCode() + " - " + e.getResponseBodyAsString());
-            model.addAttribute("apiError", "The MTG API is currently unavailable. Please try again later.");
-            cards = List.of();
-        } catch (RestClientException e) {
-            System.err.println("Error fetching cards: " + e.getMessage());
-            model.addAttribute("apiError", "An error occurred while fetching cards. Please try again.");
-            cards = List.of();
+            String json = null;
+
+            try {
+                // 🔹 First attempt: normal /cards/search or /cards/named
+                json = restTemplate.getForObject(url, String.class);
+            } catch (HttpClientErrorException.NotFound e) {
+                // 🔁 Retry using fuzzy name search if likely a single short name
+                if (name != null && !name.isBlank() && name.length() < 30) {
+                    String fuzzyUrl = UriComponentsBuilder
+                            .fromHttpUrl("https://api.scryfall.com/cards/named")
+                            .queryParam("fuzzy", name.trim())
+                            .encode(StandardCharsets.UTF_8)
+                            .toUriString();
+                    System.out.println("DEBUG :: Retrying with fuzzy search URL: " + fuzzyUrl);
+                    try {
+                        json = restTemplate.getForObject(fuzzyUrl, String.class);
+                    } catch (HttpClientErrorException.NotFound inner) {
+                        System.out.println("DEBUG :: Fuzzy also 404 - no results found.");
+                        json = null;
+                    }
+                } else {
+                    System.out.println("DEBUG :: Skipping fuzzy search for multi-word or generic query.");
+                }
+            }
+
+            // If both attempts failed
+            if (json == null) {
+                cards = Collections.emptyList();
+            } else {
+                System.out.println("DEBUG :: raw JSON length: " + json.length());
+                JsonNode root = objectMapper.readTree(json);
+
+                JsonNode dataNode;
+                if (root.has("data")) {
+                    dataNode = root.path("data");
+                } else {
+                    // single-card endpoint returns an object, not a list
+                    dataNode = objectMapper.createArrayNode().add(root);
+                }
+
+                cards = objectMapper.readValue(
+                        dataNode.toString(),
+                        new TypeReference<List<Card>>() {}
+                );
+            }
+
+        } catch (Exception e) {
+            System.err.println("DEBUG :: Exception caught: " + e.getMessage());
+            e.printStackTrace();
+            model.addAttribute("apiError", "Unexpected error: " + e.getMessage());
+            cards = Collections.emptyList();
         }
 
-        // DEBUG LOGGING: print each card’s name and multiverseId
-        cards.forEach(c ->
-            System.out.println("DEBUG → " 
-                + c.getName() 
-                + " → multiverseId=" 
-                + c.getMultiverseId()));
-
+        // 🔹 Always send back consistent model data
         model.addAttribute("cards", cards);
         model.addAttribute("name", name);
         model.addAttribute("color", color);
         model.addAttribute("type", type);
         model.addAttribute("rarity", rarity);
-        model.addAttribute("page", page);
+        model.addAttribute("matchType", matchType);
         model.addAttribute("isCollection", false);
         return "cards";
     }
 
-    /**
-     * POST /cards/add → add a card to the session collection
-     */
     @PostMapping("/add")
     public String addToCollection(
-            @ModelAttribute("myCollection") List<Card> myCollection,
-            @ModelAttribute("card") Card card,
-            @RequestParam(value = "searchName", required = false) String name,
-            @RequestParam(required = false) String color,
-            @RequestParam(required = false) String type,
-            @RequestParam(required = false) String rarity
+            @RequestParam String cardId,
+            @RequestParam String cardName,
+            Principal principal
     ) {
-        if (card.getName() != null && !card.getName().isBlank()) {
-            myCollection.add(card);
-        }
-        StringBuilder redirectUrl = new StringBuilder("redirect:/cards/search/view?");
-        if (name != null && !name.isEmpty())   redirectUrl.append("name=").append(name).append("&");
-        if (color != null && !color.isEmpty())  redirectUrl.append("color=").append(color).append("&");
-        if (type != null && !type.isEmpty())   redirectUrl.append("type=").append(type).append("&");
-        if (rarity != null && !rarity.isEmpty()) redirectUrl.append("rarity=").append(rarity).append("&");
-        redirectUrl.append("success=true&addedCard=").append(card.getName().replaceAll(" ", "+"));
-        return redirectUrl.toString();
+        String user = principal.getName();
+        collectionService.addCard(user, cardId);
+        String encoded = UriUtils.encode(cardName, StandardCharsets.UTF_8);
+        return "redirect:/cards?success=true&addedCard=" + encoded;
     }
 
-    /**
-     * POST /cards/remove → remove a card from the session collection by multiverseId
-     */
     @PostMapping("/remove")
     public String removeFromCollection(
-            @ModelAttribute("myCollection") List<Card> myCollection,
-            @ModelAttribute("card") Card card
+            @RequestParam String cardId,
+            Principal principal
     ) {
-        myCollection.removeIf(c -> Objects.equals(c.getMultiverseId(), card.getMultiverseId()));
+        String user = principal.getName();
+        collectionService.removeCard(user, cardId);
         return "redirect:/cards/collection";
     }
 
-    /**
-     * GET /cards/collection → view the session collection
-     */
     @GetMapping("/collection")
-    public String viewCollection(
-            @ModelAttribute("myCollection") List<Card> myCollection,
-            Model model
-    ) {
-        model.addAttribute("cards", myCollection);
+    public String viewCollection(Model model, Principal principal) {
+        String user = principal.getName();
+        List<Card> cards = collectionService.getUserCollection(user);
+        model.addAttribute("cards", cards);
         model.addAttribute("isCollection", true);
+        model.addAttribute("showSearchOnly", false);
+        model.addAttribute("name", null);
+        model.addAttribute("color", null);
+        model.addAttribute("type", null);
+        model.addAttribute("rarity", null);
         return "cards";
     }
 
-    /**
-     * GET /cards/{multiverseId} → view details for a single card
-     */
-    @GetMapping("/{multiverseId}")
-    public String viewCardDetail(
-            @PathVariable Integer multiverseId,
-            Model model
-    ) {
-        String url = "https://api.magicthegathering.io/v1/cards/" + multiverseId;
-        CardWrapper response;
+    @GetMapping("/{id}")
+    public String viewCardDetail(@PathVariable String id, Model model) {
+        String url = "https://api.scryfall.com/cards/" + id;
         try {
-            response = restTemplate.getForObject(url, CardWrapper.class);
+            Card card = restTemplate.getForObject(url, Card.class);
+            model.addAttribute("cardDetails", card);
         } catch (RestClientException e) {
             model.addAttribute("apiError", "Could not fetch card details.");
-            return "card-detail";
         }
-        Card card = (response != null) ? response.getCard() : null;
-        model.addAttribute("cardDetails", card);
         return "card-detail";
     }
 }

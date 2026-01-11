@@ -37,10 +37,11 @@
            alt="Card image">
       <div class="card-body">
         <h2 class="card-title" th:text="${cardDetails.name}">Card Name</h2>
-        <p><strong>Multiverse ID:</strong> <span th:text="${cardDetails.multiverseId}"></span></p>
+        <p><strong>ID:</strong> <span th:text="${cardDetails.id}"></span></p>
         <p><strong>Type:</strong> <span th:text="${cardDetails.type}"></span></p>
         <p><strong>Mana Cost:</strong> <span th:text="${cardDetails.manaCost}"></span></p>
         <p><strong>Rarity:</strong> <span th:text="${cardDetails.rarity}"></span></p>
+        <p><strong>Oracle Text:</strong> <span th:text="${cardDetails.oracleText}"></span></p>
       </div>
     </div>
   </div>

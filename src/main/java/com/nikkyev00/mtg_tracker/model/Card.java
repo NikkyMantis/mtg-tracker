@@ -1,47 +1,51 @@
 package com.nikkyev00.mtg_tracker.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Card {
-    private Integer multiverseId;
+    private String id;
     private String name;
+
+    @JsonProperty("type_line")
     private String type;
+
     private String rarity;
+
+    @JsonProperty("mana_cost")
     private String manaCost;
-    private String imageUrl;
-    
-    // Getters and Setters
 
-    public String getName() {
-        return name;
+    @JsonProperty("image_uris")
+    private ImageUris imageUris;
+
+    /**
+     * Helper for Thymeleaf to get a single image URL.
+     * Tries small → normal → large.
+     */
+    public String getImageUrl() {
+        if (imageUris == null) {
+            return null;
+        }
+        if (imageUris.getSmall() != null) {
+            return imageUris.getSmall();
+        }
+        if (imageUris.getNormal() != null) {
+            return imageUris.getNormal();
+        }
+        if (imageUris.getLarge() != null) {
+            return imageUris.getLarge();
+        }
+        return null;
     }
 
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getType() {
-        return type;
-    }
-
-    public void setType(String type) {
-        this.type = type;
-    }
-
-    public String getRarity() {
-        return rarity;
-    }
-
-    public void setRarity(String rarity) {
-        this.rarity = rarity;
-    }
-
-    public String getManaCost() {
-        return manaCost;
-    }
-
-    public void setManaCost(String manaCost) {
-        this.manaCost = manaCost;
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class ImageUris {
+        private String small;
+        private String normal;
+        private String large;
     }
 }
