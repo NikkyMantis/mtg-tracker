@@ -38,14 +38,6 @@ public class CardViewController {
             @RequestParam(required = false) String addedCard,
             Model model
     ) {
-        System.out.println("========================================");
-        System.out.println("CONTROLLER RECEIVED name      = [" + name + "]");
-        System.out.println("CONTROLLER RECEIVED color     = [" + color + "]");
-        System.out.println("CONTROLLER RECEIVED type      = [" + type + "]");
-        System.out.println("CONTROLLER RECEIVED rarity    = [" + rarity + "]");
-        System.out.println("CONTROLLER RECEIVED matchType = [" + matchType + "]");
-        System.out.println("========================================");
-
         List<Card> cards = Collections.emptyList();
 
         boolean hasFilter =
@@ -55,18 +47,11 @@ public class CardViewController {
                 (rarity != null && !rarity.isBlank());
 
         if (hasFilter) {
-            try {
-                cards = searchService.search(name, color, type, rarity, matchType);
-            } catch (Exception e) {
-                e.printStackTrace();
-                cards = Collections.emptyList();
-            }
+            cards = searchService.search(name, color, type, rarity, matchType);
         }
 
-        // 🔴 THIS IS THE CRITICAL PROOF LOG
-        System.out.println("CONTROLLER cards.size() = " + cards.size());
-
         model.addAttribute("cards", cards);
+        model.addAttribute("resultCount", cards.size()); // ✅ NEW
         model.addAttribute("name", name);
         model.addAttribute("color", color);
         model.addAttribute("type", type);
@@ -105,6 +90,7 @@ public class CardViewController {
         List<Card> cards = collectionService.getUserCollection(principal.getName());
 
         model.addAttribute("cards", cards);
+        model.addAttribute("resultCount", cards.size()); // consistent
         model.addAttribute("isCollection", true);
         model.addAttribute("showSearchOnly", false);
 

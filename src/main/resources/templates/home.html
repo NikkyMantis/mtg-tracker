@@ -1,122 +1,108 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org"
       xmlns:sec="https://www.thymeleaf.org/extras/spring-security"
-      data-bs-theme="light">
+      data-bs-theme="dark">
 <head>
   <meta charset="UTF-8">
   <title>MTG Tracker Home</title>
+
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" th:href="@{/css/theme.css}">
+
   <style>
-    /* Full-screen background image */
     body {
       background: url('/images/default-bg.jpg') no-repeat center center fixed;
       background-size: cover;
-      margin: 0;
     }
-    /* Semi-transparent off-gray overlay for jumbotron only */
+
     .overlay {
-      background-color: rgba(248,249,250,0.8); /* light off-gray */
+      background-color: rgba(40, 40, 40, 0.85);
       padding: 2rem;
       border-radius: 0.5rem;
-      display: inline-block;
-      color: #333333;
     }
-    /* Heading color override inside overlay */
-    .overlay h1 {
-      color: #222222;
-    }
-    /* Paragraph color override inside overlay */
-    .overlay p {
-      color: #555555;
-    }
-    /* Specific style for the random cards heading */
-    .random-cards-title {
-      color: #ffffff; /* white text */
-    }
-    /* Constrain the card grid width to 75% */
+
     .cards-grid {
       max-width: 75%;
       margin: auto;
     }
-    /* Reduce padding in card-body to make boxes smaller */
-    .card-body {
-      padding: 0.5rem;
-    }
-    /* Optionally reduce font-size for card titles */
-    .card-title {
-      font-size: 0.9rem;
+
+    .random-cards-title {
+      color: #ffffff;
     }
   </style>
 </head>
+
 <body>
 
-  <!-- Navbar with Sign In / User Dropdown -->
-  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-    <div class="container">
-      <a class="navbar-brand" th:href="@{/}">MTG Tracker</a>
-      <div class="collapse navbar-collapse">
-        <ul class="navbar-nav ms-auto">
+<nav class="navbar navbar-expand-lg navbar-dark">
+  <div class="container">
+    <a class="navbar-brand" th:href="@{/}">MTG Tracker</a>
 
-          <!-- Anonymous: only Sign In -->
-          <li class="nav-item" sec:authorize="isAnonymous()">
-            <a class="nav-link" th:href="@{/login}">Sign In</a>
-          </li>
+    <ul class="navbar-nav ms-auto">
+      <li class="nav-item" sec:authorize="isAnonymous()">
+        <a class="nav-link" th:href="@{/login}">Sign In</a>
+      </li>
 
-          <!-- Authenticated: username dropdown + View Collection -->
-          <li class="nav-item dropdown" sec:authorize="isAuthenticated()">
-            <a class="nav-link dropdown-toggle" href="#" id="userMenu" role="button"
-               data-bs-toggle="dropdown" aria-expanded="false"
-               th:text="${username}">Username</a>
-            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
-              <li><a class="dropdown-item" th:href="@{/account}">Account</a></li>
-              <li><hr class="dropdown-divider"></li>
-              <li>
-                <form th:action="@{/logout}" method="post" class="px-3">
-                  <button type="submit" class="btn btn-link p-0 m-0">Sign Out</button>
-                </form>
-              </li>
-            </ul>
+      <li class="nav-item dropdown" sec:authorize="isAuthenticated()">
+        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown"
+           th:text="${username}">Username</a>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li><a class="dropdown-item" th:href="@{/account}">Account</a></li>
+          <li><hr class="dropdown-divider"></li>
+          <li>
+            <form th:action="@{/logout}" method="post" class="px-3">
+              <button type="submit" class="btn btn-link p-0">Sign Out</button>
+            </form>
           </li>
-
-          <!-- Always show Search Cards -->
-          <li class="nav-item">
-            <a class="nav-link" th:href="@{/cards}">Search Cards</a>
-          </li>
-          <!-- Only show Collection link when signed in -->
-          <li class="nav-item" sec:authorize="isAuthenticated()">
-            <a class="nav-link" th:href="@{/cards/collection}">View Collection</a>
-          </li>
-
         </ul>
-      </div>
-    </div>
-  </nav>
+      </li>
 
-  <!-- Jumbotron Text in Narrow Overlay -->
-  <div class="d-flex justify-content-center mt-5">
-    <div class="overlay text-center">
-      <h1 class="display-4 mb-4">Welcome to your MTG Tracker!</h1>
-      <p class="lead mb-3">
-        Search cards, build your collection, and explore the magic of MTG.
-      </p>
-    </div>
+      <li class="nav-item">
+        <a class="nav-link" th:href="@{/cards}">Search Cards</a>
+      </li>
+
+      <li class="nav-item" sec:authorize="isAuthenticated()">
+        <a class="nav-link" th:href="@{/cards/collection}">View Collection</a>
+      </li>
+    </ul>
   </div>
+</nav>
 
-  <!-- Random 10 Cards Grid -->
-  <div class="container mt-4 cards-grid">
-    <h2 class="random-cards-title text-center mb-3">5 Random Cards</h2>
-    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-5 g-4">
-      <div class="col" th:each="card : ${topCards}">
-        <div class="card h-100">
-          <img th:src="${card.imageUrl}" class="card-img-top" alt="Card image" />
-          <div class="card-body">
-            <h6 class="card-title text-center" th:text="${card.name}">Card Name</h6>
-          </div>
+<div class="d-flex justify-content-center mt-5">
+  <div class="overlay text-center">
+    <h1 class="display-4">Welcome to your MTG Tracker</h1>
+    <p class="lead">Search cards, build your collection, and explore MTG.</p>
+  </div>
+</div>
+
+<div class="container mt-4 cards-grid">
+  <h2 class="random-cards-title text-center mb-3">5 Random Cards</h2>
+
+  <div class="row row-cols-1 row-cols-sm-2 row-cols-md-5 g-4">
+    <div class="col" th:each="card : ${topCards}">
+      <div class="card h-100 card-wrapper">
+
+        <img th:src="${card.imageUrl}" class="card-img-top">
+
+        <div class="add-overlay" sec:authorize="isAuthenticated()">
+          <form th:action="@{/cards/add}" method="post">
+            <input type="hidden" name="cardId" th:value="${card.id}">
+            <input type="hidden" name="cardName" th:value="${card.name}">
+            <div class="add-action">
+              <span class="add-label">Add</span>
+              <button class="add-button">+</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card-body">
+          <h6 class="card-title text-center" th:text="${card.name}"></h6>
         </div>
       </div>
     </div>
   </div>
+</div>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

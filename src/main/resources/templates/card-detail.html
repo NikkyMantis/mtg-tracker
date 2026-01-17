@@ -1,52 +1,33 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org"
-      xmlns:sec="https://www.thymeleaf.org/extras/spring-security"
-      data-bs-theme="light">
+<html xmlns:th="http://www.thymeleaf.org" data-bs-theme="dark">
 <head>
   <meta charset="UTF-8">
-  <title th:text="${cardDetails.name} + ' — Details'">Card Detail</title>
+  <title>Card Detail</title>
 
-  <!-- Bootstrap CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-
-  <style>
-    .card-img-top {
-      width: 100%;
-      height: 300px;
-      object-fit: contain;
-      object-position: center;
-      background: #f4f4f4;
-    }
-  </style>
+  <link rel="stylesheet" th:href="@{/css/theme.css}">
 </head>
-<body class="bg-light">
 
-  <!-- Navbar -->
-  <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
-    <div class="container">
-      <a class="navbar-brand" th:href="@{/cards/search/view}">Back to Search</a>
-    </div>
-  </nav>
+<body>
 
-  <!-- Card Detail -->
+<nav class="navbar navbar-expand-lg navbar-dark mb-4">
   <div class="container">
-    <div class="card mb-4">
-      <img th:if="${cardDetails.imageUrl}" 
-           th:src="${cardDetails.imageUrl}" 
-           class="card-img-top" 
-           alt="Card image">
-      <div class="card-body">
-        <h2 class="card-title" th:text="${cardDetails.name}">Card Name</h2>
-        <p><strong>ID:</strong> <span th:text="${cardDetails.id}"></span></p>
-        <p><strong>Type:</strong> <span th:text="${cardDetails.type}"></span></p>
-        <p><strong>Mana Cost:</strong> <span th:text="${cardDetails.manaCost}"></span></p>
-        <p><strong>Rarity:</strong> <span th:text="${cardDetails.rarity}"></span></p>
-        <p><strong>Oracle Text:</strong> <span th:text="${cardDetails.oracleText}"></span></p>
-      </div>
+    <a class="navbar-brand" th:href="@{/cards}">Back to Search</a>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="card">
+    <img th:src="${cardDetails.imageUrl}" class="card-img-top">
+    <div class="card-body">
+      <h2 th:text="${cardDetails.name}"></h2>
+      <p><strong>Type:</strong> <span th:text="${cardDetails.type}"></span></p>
+      <p><strong>Mana Cost:</strong> <span th:text="${cardDetails.manaCost}"></span></p>
+      <p><strong>Rarity:</strong> <span th:text="${cardDetails.rarity}"></span></p>
     </div>
   </div>
+</div>
 
-  <!-- Bootstrap JS Bundle -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
