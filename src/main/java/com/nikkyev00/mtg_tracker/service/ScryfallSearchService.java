@@ -1,16 +1,10 @@
 package com.nikkyev00.mtg_tracker.service;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nikkyev00.mtg_tracker.model.Card;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.util.List;
 
 @Service
 public class ScryfallSearchService {
@@ -29,32 +23,51 @@ public class ScryfallSearchService {
         });
     }
 
-    public List<Card> search(String name, String color, String type, String rarity, String matchType) {
+    /* =========================
+       SEARCH BY NAME
+       ========================= */
+    public java.util.List<Card> search(
+            String name,
+            String color,
+            String type,
+            String rarity,
+            String matchType
+    ) {
         try {
             if (name == null || name.isBlank()) {
-                return List.of();
+                return java.util.List.of();
             }
 
-            String encodedQuery = URLEncoder.encode(name.trim(), StandardCharsets.UTF_8);
-            String url = "https://api.scryfall.com/cards/search?q=" + encodedQuery;
-
-            System.out.println("SCRYFALL URL = " + url);
+            String url = "https://api.scryfall.com/cards/search?q="
+                    + java.net.URLEncoder.encode(name.trim(), java.nio.charset.StandardCharsets.UTF_8);
 
             String json = restTemplate.getForObject(url, String.class);
 
-            JsonNode root = objectMapper.readTree(json);
-            JsonNode data = root.get("data");
-
-            System.out.println("SCRYFALL data.size() = " + data.size());
+            var root = objectMapper.readTree(json);
+            var data = root.get("data");
 
             return objectMapper.readValue(
                     data.toString(),
-                    new TypeReference<List<Card>>() {}
+                    new com.fasterxml.jackson.core.type.TypeReference<>() {}
             );
 
         } catch (Exception e) {
             e.printStackTrace();
-            return List.of();
+            return java.util.List.of();
+        }
+    }
+
+    /* =========================
+       FETCH CARD BY ID (NEW)
+       ========================= */
+    public Card getCardById(String cardId) {
+        try {
+            String url = "https://api.scryfall.com/cards/" + cardId;
+            String json = restTemplate.getForObject(url, String.class);
+            return objectMapper.readValue(json, Card.class);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
         }
     }
 }

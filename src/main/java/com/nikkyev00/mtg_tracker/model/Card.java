@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 import java.util.List;
 
 @Data
-@NoArgsConstructor // 🔥 REQUIRED FOR JACKSON
+@NoArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Card {
 
@@ -23,11 +23,25 @@ public class Card {
     @JsonProperty("mana_cost")
     private String manaCost;
 
-    // Single-faced cards
+    // 🔹 SET / PRINTING DATA (PHASE 1 CORE)
+    @JsonProperty("set")
+    private String setCode;
+
+    @JsonProperty("set_name")
+    private String setName;
+
+    @JsonProperty("collector_number")
+    private String collectorNumber;
+
+    // 🔹 Oracle text (for modal later)
+    @JsonProperty("oracle_text")
+    private String oracleText;
+
+    // 🔹 Single-faced cards
     @JsonProperty("image_uris")
     private ImageUris imageUris;
 
-    // Double-faced / UB cards
+    // 🔹 Double-faced / UB cards
     @JsonProperty("card_faces")
     private List<CardFace> cardFaces;
 
@@ -53,8 +67,10 @@ public class Card {
         return null;
     }
 
+    // ===== INNER CLASSES =====
+
     @Data
-    @NoArgsConstructor // 🔥 REQUIRED
+    @NoArgsConstructor
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class ImageUris {
         private String small;
@@ -63,7 +79,7 @@ public class Card {
     }
 
     @Data
-    @NoArgsConstructor // 🔥 REQUIRED
+    @NoArgsConstructor
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class CardFace {
         @JsonProperty("image_uris")

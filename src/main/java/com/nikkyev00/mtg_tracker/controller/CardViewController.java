@@ -1,96 +1,112 @@
 ﻿package com.nikkyev00.mtg_tracker.controller;
 
 import com.nikkyev00.mtg_tracker.model.Card;
+import com.nikkyev00.mtg_tracker.model.CollectionItem;
 import com.nikkyev00.mtg_tracker.service.CollectionService;
 import com.nikkyev00.mtg_tracker.service.ScryfallSearchService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.nio.charset.StandardCharsets;
 import java.security.Principal;
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
 
 @Controller
-@RequestMapping("/cards")
 public class CardViewController {
 
-    private final ScryfallSearchService searchService;
+    private final ScryfallSearchService scryfallService;
     private final CollectionService collectionService;
 
     public CardViewController(
-            ScryfallSearchService searchService,
+            ScryfallSearchService scryfallService,
             CollectionService collectionService
     ) {
-        this.searchService = searchService;
+        this.scryfallService = scryfallService;
         this.collectionService = collectionService;
     }
 
-    @GetMapping
+    /* =========================
+       SEARCH
+       ========================= */
+    @GetMapping("/cards")
     public String searchCards(
             @RequestParam(required = false) String name,
             @RequestParam(required = false) String color,
             @RequestParam(required = false) String type,
             @RequestParam(required = false) String rarity,
-            @RequestParam(required = false) String matchType,
-            @RequestParam(required = false) Boolean success,
-            @RequestParam(required = false) String addedCard,
             Model model
     ) {
-        List<Card> cards = Collections.emptyList();
+        boolean hasSearch = name != null && !name.isBlank();
 
-        boolean hasFilter =
-                (name != null && !name.isBlank()) ||
-                (color != null && !color.isBlank()) ||
-                (type != null && !type.isBlank()) ||
-                (rarity != null && !rarity.isBlank());
-
-        if (hasFilter) {
-            cards = searchService.search(name, color, type, rarity, matchType);
-        }
+        List<Card> cards = hasSearch
+                ? scryfallService.search(name, color, type, rarity, "exact")
+                : List.of();
 
         model.addAttribute("cards", cards);
-        model.addAttribute("resultCount", cards.size()); // ✅ NEW
+        model.addAttribute("isCollection", false);
+        model.addAttribute("showSearchOnly", !hasSearch);
+
         model.addAttribute("name", name);
         model.addAttribute("color", color);
         model.addAttribute("type", type);
         model.addAttribute("rarity", rarity);
-        model.addAttribute("matchType", matchType);
-        model.addAttribute("isCollection", false);
-        model.addAttribute("showSearchOnly", !hasFilter);
-        model.addAttribute("success", success);
-        model.addAttribute("addedCard", addedCard);
 
         return "cards";
     }
 
-    @PostMapping("/add")
-    public String addToCollection(
+    /* =========================
+       ADD
+       ========================= */
+    @PostMapping("/cards/add")
+    public String addCard(
             @RequestParam String cardId,
             @RequestParam String cardName,
-            Principal principal
+            Principal principal,
+            RedirectAttributes redirectAttributes
     ) {
-        collectionService.addCard(principal.getName(), cardId);
-        return "redirect:/cards?success=true&addedCard=" +
-                java.net.URLEncoder.encode(cardName, StandardCharsets.UTF_8);
+        collectionService.addToCollection(principal.getName(), cardId);
+
+        redirectAttributes.addFlashAttribute("success", true);
+        redirectAttributes.addFlashAttribute("addedCard", cardName);
+
+        return "redirect:/cards";
     }
 
-    @PostMapping("/remove")
-    public String removeFromCollection(
+    /* =========================
+       REMOVE
+       ========================= */
+    @PostMapping("/cards/remove")
+    public String removeCard(
             @RequestParam String cardId,
             Principal principal
     ) {
-        collectionService.removeCard(principal.getName(), cardId);
+        collectionService.removeFromCollection(principal.getName(), cardId);
         return "redirect:/cards/collection";
     }
 
-    @GetMapping("/collection")
-    public String viewCollection(Model model, Principal principal) {
-        List<Card> cards = collectionService.getUserCollection(principal.getName());
+    /* =========================
+       COLLECTION (FIXED)
+       ========================= */
+    @GetMapping("/cards/collection")
+    public String viewCollection(
+            Principal principal,
+            Model model
+    ) {
+        List<CollectionItem> items =
+                collectionService.getUserCollection(principal.getName());
+
+        List<Card> cards = new ArrayList<>();
+
+        for (CollectionItem item : items) {
+            Card card = scryfallService.getCardById(item.getCardId());
+            if (card != null) {
+                cards.add(card);
+            }
+        }
 
         model.addAttribute("cards", cards);
-        model.addAttribute("resultCount", cards.size()); // consistent
         model.addAttribute("isCollection", true);
         model.addAttribute("showSearchOnly", false);
 
