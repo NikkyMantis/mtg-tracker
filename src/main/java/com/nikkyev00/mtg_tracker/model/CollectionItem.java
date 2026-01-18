@@ -10,17 +10,24 @@ public class CollectionItem {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false)
     private String username;
 
+    @Column(nullable = false)
     private String cardId;
 
-    public CollectionItem() {
+    /* ---------- REQUIRED BY JPA ---------- */
+    protected CollectionItem() {
+        // JPA only
     }
 
+    /* ---------- YOUR CONSTRUCTOR ---------- */
     public CollectionItem(String username, String cardId) {
         this.username = username;
         this.cardId = cardId;
     }
+
+    /* ---------- GETTERS ---------- */
 
     public Long getId() {
         return id;

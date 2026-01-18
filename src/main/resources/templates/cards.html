@@ -77,8 +77,8 @@
     Use the form above to search for cards.
   </div>
 
-  <!-- CARD GRID -->
-  <div th:if="${cards != null and !cards.empty}">
+  <!-- CARD GRID (SEARCH RESULTS) -->
+  <div th:if="${isCollection == false and cards != null and !cards.empty}">
     <div class="row row-cols-1 row-cols-sm-2 row-cols-md-5 g-4">
       <div class="col" th:each="card : ${cards}">
         <div class="card h-100">
@@ -91,20 +91,11 @@
             <h6 class="card-title text-center"
                 th:text="${card.name}"></h6>
 
-            <!-- ADD BUTTON -->
-            <form th:if="${isCollection == false}"
-                  th:action="@{/cards/add}" method="post">
-              <input type="hidden" name="cardId" th:value="${card.id}">
-              <input type="hidden" name="cardName" th:value="${card.name}">
-              <button class="btn btn-success btn-sm w-100">Add</button>
-            </form>
-
-            <!-- REMOVE BUTTON -->
-            <form th:if="${isCollection == true}"
-                  th:action="@{/cards/remove}" method="post">
-              <input type="hidden" name="cardId" th:value="${card.id}">
-              <button class="btn btn-danger btn-sm w-100">Remove</button>
-            </form>
+            <!-- VIEW PRINTINGS BUTTON (replaces Add) -->
+            <a class="btn btn-success btn-sm w-100"
+               th:href="@{/cards/printings/{oracleId}(oracleId=${card.oracleId})}">
+              View Printings
+            </a>
 
           </div>
         </div>
@@ -112,8 +103,45 @@
     </div>
   </div>
 
-  <!-- NO RESULTS -->
-  <div th:if="${showSearchOnly != true and (cards == null or cards.empty)}"
+  <!-- COLLECTION VIEW -->
+  <div th:if="${isCollection == true}">
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-5 g-4">
+
+      <th:block th:each="oracleCard : ${collection}">
+        <th:block th:each="printing : ${oracleCard.printings}">
+          <div class="col">
+            <div class="card h-100">
+
+              <img th:src="${@cardService.getCardById(printing.scryfallId).imageUrl}"
+                   class="card-img-top">
+
+              <div class="card-body">
+                <h6 class="card-title text-center"
+                    th:text="${oracleCard.name}"></h6>
+
+                <p class="text-center small mb-2">
+                  <span th:text="${printing.setName}"></span>
+                  (#<span th:text="${printing.collectorNumber}"></span>)
+                  × <span th:text="${printing.quantity}"></span>
+                </p>
+
+                <form th:action="@{/cards/remove}" method="post">
+                  <input type="hidden" name="cardId"
+                         th:value="${printing.scryfallId}">
+                  <button class="btn btn-danger btn-sm w-100">Remove</button>
+                </form>
+
+              </div>
+            </div>
+          </div>
+        </th:block>
+      </th:block>
+
+    </div>
+  </div>
+
+  <!-- NO RESULTS (SEARCH ONLY) -->
+  <div th:if="${isCollection == false and showSearchOnly != true and (cards == null or cards.empty)}"
        class="alert alert-warning">
     No cards found.
   </div>

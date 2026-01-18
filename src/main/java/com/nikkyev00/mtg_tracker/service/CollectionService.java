@@ -1,41 +1,59 @@
 package com.nikkyev00.mtg_tracker.service;
 
-import com.nikkyev00.mtg_tracker.model.CollectionItem;
-import com.nikkyev00.mtg_tracker.repository.CollectionItemRepository;
-import jakarta.transaction.Transactional;
+import com.nikkyev00.mtg_tracker.model.Card;
+import com.nikkyev00.mtg_tracker.model.OracleCard;
+import com.nikkyev00.mtg_tracker.model.OwnedPrinting;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
+import java.util.*;
 
 @Service
 public class CollectionService {
 
-    private final CollectionItemRepository collectionItemRepository;
+    /**
+     * username -> oracleId -> OracleCard
+     */
+    private final Map<String, Map<String, OracleCard>> userCollections = new HashMap<>();
 
-    public CollectionService(CollectionItemRepository collectionItemRepository) {
-        this.collectionItemRepository = collectionItemRepository;
+    public void addToCollection(String username, Card card) {
+        userCollections.putIfAbsent(username, new HashMap<>());
+        Map<String, OracleCard> collection = userCollections.get(username);
+
+        OracleCard oracleCard = collection.get(card.getOracleId());
+
+        if (oracleCard == null) {
+            oracleCard = new OracleCard(
+                    card.getOracleId(),
+                    card.getName(),
+                    card.getType(),
+                    card.getManaCost()
+            );
+            collection.put(card.getOracleId(), oracleCard);
+        }
+
+        OwnedPrinting printing = new OwnedPrinting(
+                card.getId(),
+                card.getSet(),
+                card.getSetName(),
+                card.getCollectorNumber()
+        );
+
+        oracleCard.addOrIncrementPrinting(printing);
     }
 
-    /* =========================
-       ADD TO COLLECTION
-       ========================= */
-    public void addToCollection(String username, String cardId) {
-        CollectionItem item = new CollectionItem(username, cardId);
-        collectionItemRepository.save(item);
+    public Collection<OracleCard> getUserCollection(String username) {
+        return userCollections
+                .getOrDefault(username, Collections.emptyMap())
+                .values();
     }
 
-    /* =========================
-       REMOVE FROM COLLECTION
-       ========================= */
-    @Transactional
-    public void removeFromCollection(String username, String cardId) {
-        collectionItemRepository.deleteByUsernameAndCardId(username, cardId);
-    }
+    public void removePrinting(String username, String scryfallId) {
+        Map<String, OracleCard> collection = userCollections.get(username);
+        if (collection == null) return;
 
-    /* =========================
-       GET USER COLLECTION
-       ========================= */
-    public List<CollectionItem> getUserCollection(String username) {
-        return collectionItemRepository.findByUsername(username);
+        for (OracleCard oracleCard : collection.values()) {
+            oracleCard.getPrintings()
+                    .removeIf(p -> p.getScryfallId().equals(scryfallId));
+        }
     }
 }

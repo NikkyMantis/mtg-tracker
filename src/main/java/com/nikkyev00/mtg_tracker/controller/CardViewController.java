@@ -1,36 +1,34 @@
 ﻿package com.nikkyev00.mtg_tracker.controller;
 
 import com.nikkyev00.mtg_tracker.model.Card;
-import com.nikkyev00.mtg_tracker.model.CollectionItem;
+import com.nikkyev00.mtg_tracker.model.OracleCard;
+import com.nikkyev00.mtg_tracker.service.CardService;
 import com.nikkyev00.mtg_tracker.service.CollectionService;
-import com.nikkyev00.mtg_tracker.service.ScryfallSearchService;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.security.Principal;
-import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 @Controller
+@RequestMapping("/cards")
 public class CardViewController {
 
-    private final ScryfallSearchService scryfallService;
+    private final CardService cardService;
     private final CollectionService collectionService;
 
-    public CardViewController(
-            ScryfallSearchService scryfallService,
-            CollectionService collectionService
-    ) {
-        this.scryfallService = scryfallService;
+    public CardViewController(CardService cardService,
+                              CollectionService collectionService) {
+        this.cardService = cardService;
         this.collectionService = collectionService;
     }
 
-    /* =========================
-       SEARCH
-       ========================= */
-    @GetMapping("/cards")
+    /* ================= SEARCH ================= */
+
+    @GetMapping
     public String searchCards(
             @RequestParam(required = false) String name,
             @RequestParam(required = false) String color,
@@ -38,16 +36,16 @@ public class CardViewController {
             @RequestParam(required = false) String rarity,
             Model model
     ) {
-        boolean hasSearch = name != null && !name.isBlank();
+        if (name == null && color == null && type == null && rarity == null) {
+            model.addAttribute("showSearchOnly", true);
+            model.addAttribute("isCollection", false);
+            return "cards";
+        }
 
-        List<Card> cards = hasSearch
-                ? scryfallService.search(name, color, type, rarity, "exact")
-                : List.of();
+        List<Card> cards = cardService.searchCards(name, color, type, rarity);
 
         model.addAttribute("cards", cards);
         model.addAttribute("isCollection", false);
-        model.addAttribute("showSearchOnly", !hasSearch);
-
         model.addAttribute("name", name);
         model.addAttribute("color", color);
         model.addAttribute("type", type);
@@ -56,17 +54,34 @@ public class CardViewController {
         return "cards";
     }
 
-    /* =========================
-       ADD
-       ========================= */
-    @PostMapping("/cards/add")
+    /* ================= VIEW PRINTINGS ================= */
+
+    @GetMapping("/printings/{oracleId}")
+    public String viewPrintings(@PathVariable String oracleId, Model model) {
+
+        List<Card> printings = cardService.getPrintingsByCardId(oracleId);
+
+        model.addAttribute("cards", printings);
+        model.addAttribute("isCollection", false);
+
+        return "printings";
+    }
+
+    /* ================= ADD ================= */
+
+    @PostMapping("/add")
     public String addCard(
             @RequestParam String cardId,
             @RequestParam String cardName,
-            Principal principal,
+            Authentication authentication,
             RedirectAttributes redirectAttributes
     ) {
-        collectionService.addToCollection(principal.getName(), cardId);
+        String username = authentication.getName();
+
+        Card card = cardService.getCardById(cardId);
+        if (card != null) {
+            collectionService.addToCollection(username, card);
+        }
 
         redirectAttributes.addFlashAttribute("success", true);
         redirectAttributes.addFlashAttribute("addedCard", cardName);
@@ -74,42 +89,31 @@ public class CardViewController {
         return "redirect:/cards";
     }
 
-    /* =========================
-       REMOVE
-       ========================= */
-    @PostMapping("/cards/remove")
-    public String removeCard(
-            @RequestParam String cardId,
-            Principal principal
-    ) {
-        collectionService.removeFromCollection(principal.getName(), cardId);
-        return "redirect:/cards/collection";
+    /* ================= COLLECTION ================= */
+
+    @GetMapping("/collection")
+    public String viewCollection(Authentication authentication, Model model) {
+
+        String username = authentication.getName();
+
+        Collection<OracleCard> oracleCards =
+                collectionService.getUserCollection(username);
+
+        model.addAttribute("oracleCards", oracleCards);
+        model.addAttribute("isCollection", true);
+
+        return "collection";
     }
 
-    /* =========================
-       COLLECTION (FIXED)
-       ========================= */
-    @GetMapping("/cards/collection")
-    public String viewCollection(
-            Principal principal,
-            Model model
+    /* ================= REMOVE PRINTING ================= */
+
+    @PostMapping("/remove")
+    public String removePrinting(
+            @RequestParam String cardId,
+            Authentication authentication
     ) {
-        List<CollectionItem> items =
-                collectionService.getUserCollection(principal.getName());
-
-        List<Card> cards = new ArrayList<>();
-
-        for (CollectionItem item : items) {
-            Card card = scryfallService.getCardById(item.getCardId());
-            if (card != null) {
-                cards.add(card);
-            }
-        }
-
-        model.addAttribute("cards", cards);
-        model.addAttribute("isCollection", true);
-        model.addAttribute("showSearchOnly", false);
-
-        return "cards";
+        String username = authentication.getName();
+        collectionService.removePrinting(username, cardId);
+        return "redirect:/cards/collection";
     }
 }

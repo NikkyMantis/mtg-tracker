@@ -6,13 +6,20 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
+import java.util.Map;
 
 @Data
 @NoArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Card {
 
+    /** Printing-specific Scryfall ID */
     private String id;
+
+    /** Shared ID across all printings (Sol Ring concept) */
+    @JsonProperty("oracle_id")
+    private String oracleId;
+
     private String name;
 
     @JsonProperty("type_line")
@@ -23,30 +30,37 @@ public class Card {
     @JsonProperty("mana_cost")
     private String manaCost;
 
-    // 🔹 SET / PRINTING DATA (PHASE 1 CORE)
-    @JsonProperty("set")
-    private String setCode;
+    /** Set code (e.g. "pfall", "cmm") */
+    private String set;
 
+    /** Human-readable set name */
     @JsonProperty("set_name")
     private String setName;
 
+    /** Collector number within the set */
     @JsonProperty("collector_number")
     private String collectorNumber;
 
-    // 🔹 Oracle text (for modal later)
-    @JsonProperty("oracle_text")
-    private String oracleText;
+    /** Pricing info (usd, usd_foil, etc.) */
+    private Map<String, String> prices;
 
-    // 🔹 Single-faced cards
+    /** Scryfall-provided URI to fetch all printings of this card */
+    @JsonProperty("prints_search_uri")
+    private String printsSearchUri;
+
+    /* -----------------------------
+       Image handling
+       ----------------------------- */
+
     @JsonProperty("image_uris")
     private ImageUris imageUris;
 
-    // 🔹 Double-faced / UB cards
     @JsonProperty("card_faces")
     private List<CardFace> cardFaces;
 
     /**
      * Used by Thymeleaf: ${card.imageUrl}
+     * Safe for single- and double-faced cards
      */
     public String getImageUrl() {
         if (imageUris != null) {
@@ -67,15 +81,17 @@ public class Card {
         return null;
     }
 
-    // ===== INNER CLASSES =====
+    /* -----------------------------
+       Nested helper classes
+       ----------------------------- */
 
     @Data
     @NoArgsConstructor
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class ImageUris {
-        private String small;
-        private String normal;
-        private String large;
+        public String small;
+        public String normal;
+        public String large;
     }
 
     @Data
