@@ -4,9 +4,7 @@ import com.nikkyev00.mtg_tracker.model.Card;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 public class CardService {
@@ -52,7 +50,6 @@ public class CardService {
 
     public List<Card> getPrintingsByCardId(String oracleId) {
 
-        // IMPORTANT: do NOT encode the entire query
         String query = "oracleid:" + oracleId + "&unique=prints";
         String url = SCRYFALL_SEARCH_URL + "?q=" + query;
 
@@ -60,19 +57,32 @@ public class CardService {
         List<Map<String, Object>> data =
                 (List<Map<String, Object>>) response.get("data");
 
-        List<Card> printings = new ArrayList<>();
+        // Key = setCode + collectorNumber
+        Map<String, Card> uniquePrintings = new HashMap<>();
 
         for (Map<String, Object> cardData : data) {
             Card card = restTemplate.getForObject(
                     SCRYFALL_CARD_BY_ID + cardData.get("id"),
                     Card.class
             );
-            if (card != null) {
-                printings.add(card);
-            }
+
+            if (card == null) continue;
+
+            String key = card.getSet() + "-" + card.getCollectorNumber();
+
+            // Only keep the first instance of each printing
+            uniquePrintings.putIfAbsent(key, card);
         }
 
-        return printings;
+        List<Card> deduped = new ArrayList<>(uniquePrintings.values());
+
+        // Sort newest → oldest
+        deduped.sort(Comparator.comparing(
+                Card::getReleasedAt,
+                Comparator.nullsLast(Comparator.reverseOrder())
+        ));
+
+        return deduped;
     }
 
     /* ================= COLLECTION SUPPORT ================= */

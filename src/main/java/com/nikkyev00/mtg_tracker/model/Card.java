@@ -30,7 +30,7 @@ public class Card {
     @JsonProperty("mana_cost")
     private String manaCost;
 
-    /** Set code (e.g. "pfall", "cmm") */
+    /** Set code (e.g. "cmm", "mh2") */
     private String set;
 
     /** Human-readable set name */
@@ -41,12 +41,12 @@ public class Card {
     @JsonProperty("collector_number")
     private String collectorNumber;
 
+    /** Release date of the printing (YYYY-MM-DD) */
+    @JsonProperty("released_at")
+    private String releasedAt;
+
     /** Pricing info (usd, usd_foil, etc.) */
     private Map<String, String> prices;
-
-    /** Scryfall-provided URI to fetch all printings of this card */
-    @JsonProperty("prints_search_uri")
-    private String printsSearchUri;
 
     /* -----------------------------
        Image handling

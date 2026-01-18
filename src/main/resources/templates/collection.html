@@ -58,9 +58,8 @@
 
                 <div class="card h-100">
 
-                    <!-- IMAGE -->
-                    <img th:if="${printing.imageUrl != null}"
-                         th:src="${printing.imageUrl}"
+                    <!-- IMAGE (RESOLVED VIA CARD SERVICE) -->
+                    <img th:src="${@cardService.getCardById(printing.scryfallId).imageUrl}"
                          class="card-img-top">
 
                     <div class="card-body">

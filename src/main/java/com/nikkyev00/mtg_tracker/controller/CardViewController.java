@@ -10,8 +10,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 
 @Controller
 @RequestMapping("/cards")
@@ -61,8 +60,41 @@ public class CardViewController {
 
         List<Card> printings = cardService.getPrintingsByCardId(oracleId);
 
-        model.addAttribute("cards", printings);
-        model.addAttribute("isCollection", false);
+        // Group by set code
+        Map<String, List<Card>> grouped = new HashMap<>();
+        for (Card card : printings) {
+            grouped.computeIfAbsent(
+                    card.getSet().toUpperCase(),
+                    k -> new ArrayList<>()
+            ).add(card);
+        }
+
+        // Sort sets by release date (newest first)
+        List<Map.Entry<String, List<Card>>> sortedSets =
+                new ArrayList<>(grouped.entrySet());
+
+        sortedSets.sort((a, b) -> {
+            String dateA = a.getValue().get(0).getReleasedAt();
+            String dateB = b.getValue().get(0).getReleasedAt();
+            return dateB.compareTo(dateA);
+        });
+
+        // Split into recent + older
+        Map<String, List<Card>> recentSets = new LinkedHashMap<>();
+        Map<String, List<Card>> olderSets = new LinkedHashMap<>();
+
+        int count = 0;
+        for (Map.Entry<String, List<Card>> entry : sortedSets) {
+            if (count < 5) {
+                recentSets.put(entry.getKey(), entry.getValue());
+            } else {
+                olderSets.put(entry.getKey(), entry.getValue());
+            }
+            count++;
+        }
+
+        model.addAttribute("recentSets", recentSets);
+        model.addAttribute("olderSets", olderSets);
 
         return "printings";
     }
