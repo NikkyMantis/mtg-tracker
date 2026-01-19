@@ -60,42 +60,20 @@ public class CardViewController {
 
         List<Card> printings = cardService.getPrintingsByCardId(oracleId);
 
-        // Group by set code
-        Map<String, List<Card>> grouped = new HashMap<>();
+        // One representative card per set
+        Map<String, Card> bySet = new HashMap<>();
         for (Card card : printings) {
-            grouped.computeIfAbsent(
-                    card.getSet().toUpperCase(),
-                    k -> new ArrayList<>()
-            ).add(card);
+            bySet.putIfAbsent(card.getSet().toUpperCase(), card);
         }
 
-        // Sort sets by release date (newest first)
-        List<Map.Entry<String, List<Card>>> sortedSets =
-                new ArrayList<>(grouped.entrySet());
-
-        sortedSets.sort((a, b) -> {
-            String dateA = a.getValue().get(0).getReleasedAt();
-            String dateB = b.getValue().get(0).getReleasedAt();
-            return dateB.compareTo(dateA);
+        // Sort by release date (newest first)
+        List<Card> sorted = new ArrayList<>(bySet.values());
+        sorted.sort((a, b) -> {
+            if (a.getReleasedAt() == null || b.getReleasedAt() == null) return 0;
+            return b.getReleasedAt().compareTo(a.getReleasedAt());
         });
 
-        // Split into recent + older
-        Map<String, List<Card>> recentSets = new LinkedHashMap<>();
-        Map<String, List<Card>> olderSets = new LinkedHashMap<>();
-
-        int count = 0;
-        for (Map.Entry<String, List<Card>> entry : sortedSets) {
-            if (count < 5) {
-                recentSets.put(entry.getKey(), entry.getValue());
-            } else {
-                olderSets.put(entry.getKey(), entry.getValue());
-            }
-            count++;
-        }
-
-        model.addAttribute("recentSets", recentSets);
-        model.addAttribute("olderSets", olderSets);
-
+        model.addAttribute("printings", sorted);
         return "printings";
     }
 
@@ -127,7 +105,6 @@ public class CardViewController {
     public String viewCollection(Authentication authentication, Model model) {
 
         String username = authentication.getName();
-
         Collection<OracleCard> oracleCards =
                 collectionService.getUserCollection(username);
 
@@ -137,7 +114,7 @@ public class CardViewController {
         return "collection";
     }
 
-    /* ================= REMOVE PRINTING ================= */
+    /* ================= REMOVE ================= */
 
     @PostMapping("/remove")
     public String removePrinting(
